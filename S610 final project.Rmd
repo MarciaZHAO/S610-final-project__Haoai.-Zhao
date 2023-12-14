@@ -15,7 +15,7 @@ library(MASS)
 library(ggplot2)
 ```
 
-Travel Data Simulation
+#Travel Data Simulation
 ```{r}
 # Define the number of samples, means, standard deviations, and valid ranges
 n_samples <- 300
@@ -59,7 +59,7 @@ summary(data)
 
 #Model selection: Forward Step-Wise Selection with Model Tracking
 ```{r}
-# Initialize the base model with TravelParticipation as the predictor
+# Initialize the base model with TravelParticipation as the only predictor
 current_model <- lm(LifeSatisfaction ~ TravelParticipation, data = data)
 current_formula <- "TravelParticipation"
 
@@ -81,7 +81,7 @@ while(length(available_predictors) > 0) {
     new_model <- lm(as.formula(paste("LifeSatisfaction ~", new_formula)), data = data)
     adj_r_squared <- summary(new_model)$adj.r.squared
 
-    # Track the tested model
+    # Track the tested models
     model_tracking[[paste("LifeSatisfaction ~", new_formula)]] <- adj_r_squared
 
     if (adj_r_squared > best_adj_r_squared) {
@@ -99,7 +99,7 @@ while(length(available_predictors) > 0) {
   }
 }
 
-# Print all model combinations and their adjusted R-squared values
+# Print all model combinations and their adjusted R-squared values for check-up
 print(model_tracking)
 
 # Find and print the model with the largest adjusted R-squared value
@@ -107,7 +107,9 @@ best_model_formula <- names(which.max(unlist(model_tracking)))
 best_model <- lm(as.formula(best_model_formula), data = data)
 cat("Model with the Largest Adjusted R-squared:\n")
 print(summary(best_model))
-
+```
+#Create a plot with all models' adjusted R^2 values
+```{r}
 # Abbreviate model names for readability
 abbreviate_model_name <- function(model_name) {
   # Split the model formula and keep the predictor part
@@ -131,7 +133,7 @@ ggplot(model_data, aes(x = Abbrev_Model, y = Adjusted_R_Squared)) +
 ```
 
 
-#Test the functions
+#Test the functions using test_that()
 ```{r}
 library(testthat)
 
