@@ -8,13 +8,14 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+#Loading packages
 ```{r}
 library(tidyverse)
 library(MASS)
 library(ggplot2)
 ```
 
-Data simulation
+Travel Data Simulation
 ```{r}
 # Define the number of samples, means, standard deviations, and valid ranges
 n_samples <- 300
@@ -29,7 +30,7 @@ ranges <- list(LifeSatisfaction = c(5, 35), TravelParticipation = c(0, 30),
                SelfPerceivedHealthStatus = c(1, 5), Income=c(1,4))
 ```
 
-# Function to generate data
+# Generating data
 ```{r}
 generate_data <- function(mean, sd, range, n) {
   rnorm(n, mean, sd) %>%
@@ -38,8 +39,7 @@ generate_data <- function(mean, sd, range, n) {
     round()
 }
 ```
-
-# Generate the dataset
+# Form the variables into a dataset
 ```{r}
 set.seed(123)
 data <- tibble(
@@ -52,13 +52,12 @@ data <- tibble(
 )
 
 ```
-
-# View summary of the dataset
+# Check the summary of the dataset to make sure the data set was simulated as expected.
 ```{r}
 summary(data)
 ```
 
-Model selection revision: model track
+#Model selection: Forward Step-Wise Selection with Model Tracking
 ```{r}
 # Initialize the base model with TravelParticipation as the predictor
 current_model <- lm(LifeSatisfaction ~ TravelParticipation, data = data)
