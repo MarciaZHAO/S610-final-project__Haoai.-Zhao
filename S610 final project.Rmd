@@ -1,0 +1,159 @@
+---
+title: "S610 final project"
+author: "Haoai Zhao"
+date: "2023-11-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(MASS)
+library(ggplot2)
+```
+
+Data simulation
+```{r}
+# Define the number of samples, means, standard deviations, and valid ranges
+n_samples <- 300
+means <- c(LifeSatisfaction = 22.8, TravelParticipation = 3.36, 
+           MobilityLevel = 74, AgeAtInjury = 27, 
+           SelfPerceivedHealthStatus = 2.64, Income=2.2)
+sds <- c(LifeSatisfaction = 8, TravelParticipation = 6, 
+         MobilityLevel = 28, AgeAtInjury = 17, 
+         SelfPerceivedHealthStatus = 1.5, Income=1.5)
+ranges <- list(LifeSatisfaction = c(5, 35), TravelParticipation = c(0, 30),
+               MobilityLevel = c(0, 100), AgeAtInjury = c(0, 100),
+               SelfPerceivedHealthStatus = c(1, 5), Income=c(1,4))
+```
+
+# Function to generate data
+```{r}
+generate_data <- function(mean, sd, range, n) {
+  rnorm(n, mean, sd) %>%
+    pmax(range[1]) %>%
+    pmin(range[2]) %>%
+    round()
+}
+```
+
+# Generate the dataset
+```{r}
+set.seed(123)
+data <- tibble(
+  LifeSatisfaction = generate_data(means["LifeSatisfaction"], sds["LifeSatisfaction"], ranges[["LifeSatisfaction"]], n_samples),
+  TravelParticipation = generate_data(means["TravelParticipation"], sds["TravelParticipation"], ranges[["TravelParticipation"]], n_samples),
+  MobilityLevel = generate_data(means["MobilityLevel"], sds["MobilityLevel"], ranges[["MobilityLevel"]], n_samples),
+  AgeAtInjury = generate_data(means["AgeAtInjury"], sds["AgeAtInjury"], ranges[["AgeAtInjury"]], n_samples),
+  SelfPerceivedHealthStatus = generate_data(means["SelfPerceivedHealthStatus"], sds["SelfPerceivedHealthStatus"], ranges[["SelfPerceivedHealthStatus"]], n_samples),
+  Income = generate_data(means["Income"], sds["Income"], ranges[["Income"]], n_samples),
+)
+
+```
+
+# View summary of the dataset
+```{r}
+summary(data)
+```
+
+Model selection revision: model track
+```{r}
+# Initialize the base model with TravelParticipation as the predictor
+current_model <- lm(LifeSatisfaction ~ TravelParticipation, data = data)
+current_formula <- "TravelParticipation"
+
+# Available predictors for stepwise selection
+available_predictors <- c("MobilityLevel", "AgeAtInjury", "SelfPerceivedHealthStatus", "Income")
+
+# Initialize a list to track model combinations and their adjusted R-squared values
+model_tracking <- list()
+model_tracking[["LifeSatisfaction ~ TravelParticipation"]] <- summary(current_model)$adj.r.squared
+
+# Forward stepwise selection process
+while(length(available_predictors) > 0) {
+  best_adj_r_squared <- summary(current_model)$adj.r.squared
+  best_predictor <- NULL
+
+  for (predictor in available_predictors) {
+    # Build and test the new model formula
+    new_formula <- paste(current_formula, "+", predictor)
+    new_model <- lm(as.formula(paste("LifeSatisfaction ~", new_formula)), data = data)
+    adj_r_squared <- summary(new_model)$adj.r.squared
+
+    # Track the tested model
+    model_tracking[[paste("LifeSatisfaction ~", new_formula)]] <- adj_r_squared
+
+    if (adj_r_squared > best_adj_r_squared) {
+      best_adj_r_squared <- adj_r_squared
+      best_predictor <- predictor
+      current_formula <- new_formula
+      current_model <- new_model
+    }
+  }
+
+  if (is.null(best_predictor)) {
+    break # No improvement, exit loop
+  } else {
+    available_predictors <- setdiff(available_predictors, best_predictor)
+  }
+}
+
+# Print all model combinations and their adjusted R-squared values
+print(model_tracking)
+
+# Find and print the model with the largest adjusted R-squared value
+best_model_formula <- names(which.max(unlist(model_tracking)))
+best_model <- lm(as.formula(best_model_formula), data = data)
+cat("Model with the Largest Adjusted R-squared:\n")
+print(summary(best_model))
+
+# Abbreviate model names for readability
+abbreviate_model_name <- function(model_name) {
+  # Split the model formula and keep the predictor part
+  predictors <- strsplit(model_name, " ~ ")[[1]][2]
+  # Replace "+" with commas and return the abbreviated name
+  return(gsub(" \\+ ", ", ", predictors))
+}
+
+# Create a new column for abbreviated model names
+model_data$Abbrev_Model <- sapply(model_data$Model, abbreviate_model_name)
+
+# Plot the adjusted R-squared values with abbreviated model names
+ggplot(model_data, aes(x = Abbrev_Model, y = Adjusted_R_Squared)) +
+  geom_line(group = 1,col="red") +  # Add a line to connect the points
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7)) +  # Adjust text angle and size
+  labs(title = "Adjusted R-Squared Values of Model Combinations", 
+       x = "Model (Predictors)", 
+       y = "Adjusted R-Squared")
+
+```
+
+
+#Test the functions
+```{r}
+library(testthat)
+
+# Test Data Generation Function
+test_that("Data generation produces correct length and within range", {
+  generated_data <- generate_data(mean = 10, sd = 2, range = c(5, 15), n = 100)
+  expect_equal(length(generated_data), 100)
+  expect_true(all(generated_data >= 5 & generated_data <= 15))
+})
+
+# Test Step-wise Model Selection Function
+test_that("Stepwise model selection improves model", {
+  # Assuming 'data' is your data set and 'current_model' is defined as before
+  # Run your step-wise model selection process here
+  
+  # Test if final model has more predictors than base model
+  expect_true(length(coef(current_model)) > 2)
+
+  # Test if adjusted R-squared of final model is greater than the base model
+  base_model <- lm(LifeSatisfaction ~ TravelParticipation, data = data)
+  expect_true(summary(current_model)$adj.r.squared > summary(base_model)$adj.r.squared)
+})
+
+```
