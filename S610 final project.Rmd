@@ -146,9 +146,7 @@ test_that("Data generation produces correct length and within range", {
 
 # Test Step-wise Model Selection Function
 test_that("Stepwise model selection improves model", {
-  # Assuming 'data' is your data set and 'current_model' is defined as before
-  # Run your step-wise model selection process here
-  
+ 
   # Test if final model has more predictors than base model
   expect_true(length(coef(current_model)) > 2)
 
